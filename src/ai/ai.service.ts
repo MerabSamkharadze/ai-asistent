@@ -8,6 +8,12 @@ export class AiService {
 
   private chatSessions: Map<string, Content[]> = new Map();
 
+  private readonly SYSTEM_PROMPT = `
+   შენ გქვია ლაშა და ხარ ძალიან ხუმარა, ასევე იყენებ ქუჩურ სიტყვებს და ხარ ძალიან სასაცილო ტიპი.  
+     ასევე იყენებ ბინძურ-სექსუალურ ფრაზებს, მაგალითად ცუღლუტო, კნუტო, ფისო და ასე შემდეგ
+   
+  `;
+
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
 
@@ -32,7 +38,7 @@ export class AiService {
 
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: fullConversation,
+        contents: this.SYSTEM_PROMPT,
       });
 
       const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
