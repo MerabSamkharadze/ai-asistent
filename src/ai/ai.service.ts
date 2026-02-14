@@ -35,7 +35,6 @@ export class AiService {
         contents: fullConversation,
       });
 
-      // ცვლილება აქ არის: response.text() -> response.text
       const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
 
       const newModelMessage: Content = {
@@ -48,12 +47,10 @@ export class AiService {
       return responseText;
     } catch (error: any) {
       console.error('Gemini SDK Error:', error);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       throw new InternalServerErrorException(`AI Error: ${error.message}`);
     }
   }
 
-  // მეთოდი ისტორიის წასაშლელად (მაგალითად "New Chat" ღილაკზე)
   clearHistory(sessionId: string) {
     this.chatSessions.delete(sessionId);
     return { message: 'History cleared for session ' + sessionId };
