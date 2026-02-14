@@ -29,20 +29,29 @@ export class AiService {
     try {
       const currentHistory = this.chatSessions.get(sessionId) || [];
 
+      // 1. ვქმნით იუზერის ახალ მესიჯს
       const newUserMessage: Content = {
         role: 'user',
         parts: [{ text: userInput } as Part],
       };
 
+      // 2. ვაერთიანებთ ისტორიას და ახალ მესიჯს
       const fullConversation = [...currentHistory, newUserMessage];
 
+      // 3. სწორი მოთხოვნა: contents არის საუბარი, config არის ინსტრუქცია
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: this.SYSTEM_PROMPT,
+        contents: fullConversation, // აქ უნდა მიდიოდეს იუზერის ნათქვამი!
+        config: {
+          systemInstruction: {
+            parts: [{ text: this.SYSTEM_PROMPT } as Part],
+          },
+        },
       });
 
       const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
 
+      // 4. ვინახავთ პასუხს ისტორიაში
       const newModelMessage: Content = {
         role: 'model',
         parts: [{ text: responseText } as Part],
@@ -56,7 +65,6 @@ export class AiService {
       throw new InternalServerErrorException(`AI Error: ${error.message}`);
     }
   }
-
   clearHistory(sessionId: string) {
     this.chatSessions.delete(sessionId);
     return { message: 'History cleared for session ' + sessionId };
