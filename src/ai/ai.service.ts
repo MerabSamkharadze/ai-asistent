@@ -1,4 +1,61 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { GoogleGenAI, Content, Part } from '@google/genai';
 
 @Injectable()
-export class AiService {}
+export class AiService {
+  private ai: GoogleGenAI;
+
+  private chatSessions: Map<string, Content[]> = new Map();
+
+  constructor(private configService: ConfigService) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+
+    this.ai = new GoogleGenAI({
+      apiKey: apiKey,
+    });
+  }
+
+  async generateResponse(
+    sessionId: string,
+    userInput: string,
+  ): Promise<string> {
+    try {
+      const currentHistory = this.chatSessions.get(sessionId) || [];
+
+      const newUserMessage: Content = {
+        role: 'user',
+        parts: [{ text: userInput } as Part],
+      };
+
+      const fullConversation = [...currentHistory, newUserMessage];
+
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: fullConversation,
+      });
+
+      // ცვლილება აქ არის: response.text() -> response.text
+      const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
+
+      const newModelMessage: Content = {
+        role: 'model',
+        parts: [{ text: responseText } as Part],
+      };
+
+      this.chatSessions.set(sessionId, [...fullConversation, newModelMessage]);
+
+      return responseText;
+    } catch (error: any) {
+      console.error('Gemini SDK Error:', error);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      throw new InternalServerErrorException(`AI Error: ${error.message}`);
+    }
+  }
+
+  // მეთოდი ისტორიის წასაშლელად (მაგალითად "New Chat" ღილაკზე)
+  clearHistory(sessionId: string) {
+    this.chatSessions.delete(sessionId);
+    return { message: 'History cleared for session ' + sessionId };
+  }
+}
