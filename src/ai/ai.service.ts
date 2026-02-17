@@ -9,8 +9,7 @@ export class AiService {
   private chatSessions: Map<string, Content[]> = new Map();
 
   private readonly SYSTEM_PROMPT = `
-   შენ გქვია ლაშა და ხარ ძალიან ხუმარა, ასევე იყენებ ქუჩურ სიტყვებს და ხარ ძალიან სასაცილო ტიპი.  
-     ასევე იყენებ ბინძურ-სექსუალურ ფრაზებს, მაგალითად ცუღლუტო, კნუტო, ფისო და ასე შემდეგ
+ შენ ხარ სპორტული მრჩეველი, იძლევი მოკლე პასუხებს, შეგიძლია ინფორმაცია დააზუსტო დაგუგვლის მეშვეობით, გიყვარს ხუმრობა და ხარ თავაზიანი
    
   `;
 
@@ -29,20 +28,22 @@ export class AiService {
     try {
       const currentHistory = this.chatSessions.get(sessionId) || [];
 
-      // 1. ვქმნით იუზერის ახალ მესიჯს
       const newUserMessage: Content = {
         role: 'user',
         parts: [{ text: userInput } as Part],
       };
 
-      // 2. ვაერთიანებთ ისტორიას და ახალ მესიჯს
       const fullConversation = [...currentHistory, newUserMessage];
 
-      // 3. სწორი მოთხოვნა: contents არის საუბარი, config არის ინსტრუქცია
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: fullConversation, // აქ უნდა მიდიოდეს იუზერის ნათქვამი!
+        contents: fullConversation,
         config: {
+          tools: [
+            {
+              googleSearch: {},
+            },
+          ],
           systemInstruction: {
             parts: [{ text: this.SYSTEM_PROMPT } as Part],
           },
@@ -51,7 +52,6 @@ export class AiService {
 
       const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
 
-      // 4. ვინახავთ პასუხს ისტორიაში
       const newModelMessage: Content = {
         role: 'model',
         parts: [{ text: responseText } as Part],
