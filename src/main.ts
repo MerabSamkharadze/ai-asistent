@@ -10,7 +10,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(process.env.PORT || 3000);
-  // console.log('🚀 Server is running on: http://localhost:3000');
+  // Railway ავტომატურად ითხოვს პორტს PORT env variable-ით
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0'); // '0.0.0.0' მნიშვნელოვანია!
+
+  console.log(`🚀 Application is running on port ${port}`);
 }
 bootstrap();
