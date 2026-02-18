@@ -1,23 +1,35 @@
-import { Controller, Post, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Param,
+  Query,
+  Sse,
+  MessageEvent,
+} from '@nestjs/common';
+import { map, Observable } from 'rxjs';
 import { AiService } from './ai.service';
-import { AskAiDto } from './dto/ask-ai.dto';
 
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
-  @Post('ask')
-  async askAi(
-    @Body() askAiDto: AskAiDto,
-  ): Promise<{ status: string; message: string }> {
-    const reply = await this.aiService.generateResponse(
-      askAiDto.sessionId,
-      askAiDto.prompt,
+  // 1. სტრიმინგის ენდფოინთი
+  @Sse('ask-stream')
+  askAiStream(
+    @Query('prompt') prompt: string,
+    @Query('sessionId') sessionId: string,
+  ): Observable<MessageEvent> {
+    return this.aiService.generateStreamResponse(sessionId, prompt).pipe(
+      map(
+        (chunk) =>
+          ({
+            data: chunk.data,
+          }) as MessageEvent,
+      ),
     );
-
-    return { status: 'success', message: reply };
   }
 
+  // 2. ისტორიის წაშლის ენდფოინთი
   @Delete('history/:sessionId')
   clearHistory(@Param('sessionId') sessionId: string) {
     return this.aiService.clearHistory(sessionId);

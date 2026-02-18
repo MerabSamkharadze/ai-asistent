@@ -1,15 +1,14 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Content, Part } from '@google/genai';
 import { SYSTEM_PROMPT } from './system-prompt';
+import { Observable } from 'rxjs';
 
 @Injectable()
 export class AiService {
   private ai: GoogleGenAI;
 
   private chatSessions: Map<string, Content[]> = new Map();
-
-
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -19,50 +18,75 @@ export class AiService {
     });
   }
 
-  async generateResponse(
+  generateStreamResponse(
     sessionId: string,
     userInput: string,
-  ): Promise<string> {
-    try {
-      const currentHistory = this.chatSessions.get(sessionId) || [];
+  ): Observable<{ data: string }> {
+    return new Observable((subscriber) => {
+      // ვიყენებთ თვით-გამომძახებელ ასინქრონულ ფუნქციას
+      (async () => {
+        try {
+          const currentHistory = this.chatSessions.get(sessionId) || [];
+          const newUserMessage = { role: 'user', parts: [{ text: userInput }] };
 
-      const newUserMessage: Content = {
-        role: 'user',
-        parts: [{ text: userInput } as Part],
-      };
-
-      const fullConversation = [...currentHistory, newUserMessage];
-
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: fullConversation,
-        config: {
-          tools: [
-            {
-              googleSearch: {},
+          // 1. ვიღებთ ასინქრონულ გენერატორს
+          const streamGenerator = await this.ai.models.generateContentStream({
+            model: 'gemini-2.5-flash-lite',
+            contents: [...currentHistory, newUserMessage],
+            config: {
+              tools: [
+                {
+                  googleSearch: {},
+                },
+              ],
+              systemInstruction: {
+                parts: [{ text: SYSTEM_PROMPT } as Part],
+              },
             },
-          ],
-          systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPT } as Part],
-          },
-        },
-      });
+          });
 
-      const responseText = response.text ?? 'პასუხი ვერ მოიძებნა.';
+          let fullReply = '';
 
-      const newModelMessage: Content = {
-        role: 'model',
-        parts: [{ text: responseText } as Part],
-      };
+          // 2. ვკითხულობთ ჩანქებს გენერატორიდან
+          for await (const chunk of streamGenerator) {
+            // ზოგიერთ ვერსიაში chunk.text() ფუნქციაა, ზოგში პროპერთი
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const chunkText =
+              typeof chunk.text === 'function'
+                ? chunk.text
+                : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                  (chunk as any).text;
 
-      this.chatSessions.set(sessionId, [...fullConversation, newModelMessage]);
+            if (chunkText) {
+              fullReply += chunkText;
+              // ვაწვდით SSE-ს თითოეულ ნაწილს
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              subscriber.next({ data: chunkText });
+            }
+          }
 
-      return responseText;
-    } catch (error: any) {
-      console.error('Gemini SDK Error:', error);
-      throw new InternalServerErrorException(`AI Error: ${error.message}`);
-    }
+          // 3. ისტორიის შენახვა
+          const newModelMessage = {
+            role: 'model',
+            parts: [{ text: fullReply }],
+          };
+          this.chatSessions.set(sessionId, [
+            ...currentHistory,
+            newUserMessage,
+            newModelMessage,
+          ]);
+
+          // 4. დასრულების სიგნალი
+          subscriber.next({ data: '[DONE]' });
+          subscriber.complete();
+        } catch (error: any) {
+          console.error('Stream Error:', error);
+          subscriber.error(error);
+        }
+      })();
+    });
   }
+
   clearHistory(sessionId: string) {
     this.chatSessions.delete(sessionId);
     return { message: 'History cleared for session ' + sessionId };
