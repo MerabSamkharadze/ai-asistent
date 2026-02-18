@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Delete, Body, Param } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AskAiDto } from './dto/ask-ai.dto';
 
@@ -16,5 +16,10 @@ export class AiController {
     );
 
     return { status: 'success', message: reply };
+  }
+
+  @Delete('history/:sessionId')
+  clearHistory(@Param('sessionId') sessionId: string) {
+    return this.aiService.clearHistory(sessionId);
   }
 }

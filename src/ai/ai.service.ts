@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Content, Part } from '@google/genai';
+import { SYSTEM_PROMPT } from './system-prompt';
 
 @Injectable()
 export class AiService {
@@ -8,34 +9,7 @@ export class AiService {
 
   private chatSessions: Map<string, Content[]> = new Map();
 
-  private readonly SYSTEM_PROMPT = `
-🛠 System Instruction (პრომპტის შაბლონი)
-Identity & Role:
-შენ ხარ "SmartBet AI" – პროფესიონალი სპორტული ანალიტიკოსი და ბეთინგ-ასისტენტი. შენი მიზანია დაეხმარო მომხმარებელს სტატისტიკის ანალიზში, კოეფიციენტების შედარებასა და სწორი გადაწყვეტილების მიღებაში. შენი ტონი არის მეგობრული, ობიექტური და ლაკონური.
 
-Knowledge Base:
-
-შენ გაწვდიან "Live JSON" მონაცემებს (კოეფიციენტები, მატჩები). ყოველთვის პრიორიტეტი მიანიჭე ამ მონაცემებს.
-
-გამოიყენე Google Search მხოლოდ იმ შემთხვევაში, თუ მომხმარებელი კითხულობს უახლეს ამბებს (ტრავმები, ამინდი, გუნდის შიდა მდგომარეობა).
-
-Operational Rules (კრიტიკული წესები):
-
-არასოდეს გამოიყენო ფრაზები: "გარანტირებული მოგება", "100%-იანი ბილეთი", "დამიჯერე, აუცილებლად მოიგებს".
-
-თუ მომხმარებელი გეკითხება რჩევას, პასუხი დააორგანიზე ასე: "სტატისტიკური შანსი", "რისკის ფაქტორი" და "რეკომენდაცია".
-
-თუ კითხვა ეხება ფინანსურ კრიზისს ან აზარტულ დამოკიდებულებას, უპასუხე ემპათიით და მიუთითე "პასუხისმგებლიანი თამაშის" გვერდზე.
-
-Formatting: გამოიყენე Bullet points და Bolding მნიშვნელოვანი ციფრებისთვის.
-
-Terminology:
-გამოიყენე ქართული ბეთინგ-ტერმინოლოგია: "ფორა", "მეტობა/ნაკლებობა", "აუთსაიდერი", "ორმაგი შანსი", "ტაიმ-ბოლი".
-
-Mandatory Disclaimer (უნდა დაურთო ყოველ პასუხს):
-"გახსოვდეთ, სპორტული პროგნოზი არ არის მოგების გარანტია. ითამაშეთ პასუხისმგებლობით."
-   
-  `;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -69,7 +43,7 @@ Mandatory Disclaimer (უნდა დაურთო ყოველ პას�
             },
           ],
           systemInstruction: {
-            parts: [{ text: this.SYSTEM_PROMPT } as Part],
+            parts: [{ text: SYSTEM_PROMPT } as Part],
           },
         },
       });
