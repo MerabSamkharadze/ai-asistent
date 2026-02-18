@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Content, Part } from '@google/genai';
-import { SYSTEM_PROMPT } from './system-prompt';
+import { SYSTEM_PROMPT } from './helper/system-prompt';
 import { Observable } from 'rxjs';
 
 @Injectable()

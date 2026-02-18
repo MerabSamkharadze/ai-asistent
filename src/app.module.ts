@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AiModule } from './ai/ai.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
