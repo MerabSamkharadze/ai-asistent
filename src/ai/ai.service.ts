@@ -42,6 +42,11 @@ export class AiService {
               systemInstruction: {
                 parts: [{ text: SYSTEM_PROMPT } as Part],
               },
+              temperature: 0.2,
+              maxOutputTokens: 600,
+              topP: 0.85,
+              topK: 25,
+              candidateCount: 1,
             },
           });
 
