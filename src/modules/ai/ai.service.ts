@@ -54,18 +54,10 @@ export class AiService {
 
           // 2. ვკითხულობთ ჩანქებს გენერატორიდან
           for await (const chunk of streamGenerator) {
-            // ზოგიერთ ვერსიაში chunk.text() ფუნქციაა, ზოგში პროპერთი
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const chunkText =
-              typeof chunk.text === 'function'
-                ? chunk.text()
-                : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                  (chunk as any).text;
+            const chunkText = chunk.text;
 
             if (chunkText) {
               fullReply += chunkText;
-              // ვაწვდით SSE-ს თითოეულ ნაწილს
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
               subscriber.next({ data: chunkText });
             }
           }
