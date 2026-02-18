@@ -58,7 +58,7 @@ export class AiService {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const chunkText =
               typeof chunk.text === 'function'
-                ? chunk.text
+                ? chunk.text()
                 : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                   (chunk as any).text;
 
