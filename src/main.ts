@@ -1,19 +1,24 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 
-  // Railway ავტომატურად ითხოვს პორტს PORT env variable-ით
   const port = process.env.PORT || 3000;
-  await app.listen(port, '0.0.0.0'); // '0.0.0.0' მნიშვნელოვანია!
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Application is running on port ${port}`);
+  console.log(`Application is running on port ${port}`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
+});

@@ -76,7 +76,7 @@ export class AiService {
           // 4. დასრულების სიგნალი
           subscriber.next({ data: '[DONE]' });
           subscriber.complete();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Stream Error:', error);
           subscriber.error(error);
         }
