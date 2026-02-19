@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator'; // თუ იყენებ ვალიდაციას
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 
 export class AskAiDto {
   @IsString()
@@ -7,5 +7,9 @@ export class AskAiDto {
 
   @IsString()
   @IsNotEmpty()
-  sessionId: string; // <--- ეს დაამატე
+  sessionId: string;
+
+  @IsOptional()
+  @IsIn(['sports', 'games', 'navigate'])
+  mode?: 'sports' | 'games' | 'navigate';
 }
