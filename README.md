@@ -97,3 +97,80 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 # ai-asistent
+
+---
+
+## SmartBet AI — Backend API
+
+ეს არის NestJS სერვერი, რომელიც Angular ფრონტს ემსახურება. მისი მიზანია Google-ის Gemini AI-სთან კომუნიკაცია და პასუხების real-time streaming.
+
+### როგორ მუშაობს
+
+```
+Angular ფრონტი
+      |
+      | GET /ai/ask-stream?prompt=...&sessionId=...&mode=...
+      |
+   Controller  ←  DTO validation (prompt, sessionId, mode)
+      |
+   AiService
+      |
+      |── mode=games?    → GamesService-იდან JSON ჩამოტვირთვა + ფილტრაცია
+      |── mode=navigate? → ისტორია არ გამოიყენება
+      |── mode=sports?   → ჩვეულებრივი კითხვა
+      |
+   Gemini API  ←  სწორი prompt + კონფიგი + ისტორია
+      |
+      | stream chunks...
+      |
+Angular ფრონტი  ←  SSE (Server-Sent Events) real-time
+```
+
+### 3 რეჟიმი
+
+**`sports` — default**
+მომხმარებელი სვამს სპორტულ კითხვებს. AI არის ანალიტიკოსი, იყენებს Google Search-ს უახლესი ამბებისთვის. საუბრის ისტორია ინახება.
+
+**`games` — დაგეგმილი თამაშები**
+მომხმარებელი კითხვებს სვამს კონკრეტული მატჩების შესახებ. Backend:
+1. `GAMES_API_URL`-იდან სრულ JSON-ს ჩამოტვირთავს
+2. prompt-ის სიტყვებით ფილტრავს (მხოლოდ შესაბამისი თამაშები)
+3. გაფილტრულ მონაცემებს prompt-ს წინ ამატებს და Gemini-ზე გზავნის
+
+Google Search გამორთულია — პასუხი მხოლოდ მოწოდებული მონაცემებიდან.
+
+**`navigate` — ნავიგაცია**
+მომხმარებელი ითხოვს გვერდზე გადასვლას. AI აბრუნებს მხოლოდ JSON-ს:
+```json
+{"type":"navigate","path":"/sports"}
+```
+ფრონტი ამ JSON-ს კითხულობს და Angular Router-ით გადადის შესაბამის გვერდზე. ისტორია არ ინახება.
+
+### ოპტიმიზაცია რეჟიმების მიხედვით
+
+| | sports | games | navigate |
+|---|---|---|---|
+| temperature | 0.2 | 0.1 | 0.0 |
+| maxTokens | 600 | 400 | 80 |
+| Google Search | ✅ | ❌ | ❌ |
+| ისტორია | ✅ | ✅ | ❌ |
+
+### Session ისტორია
+
+ყოველ მომხმარებელს აქვს უნიკალური `sessionId`. სერვერი მეხსიერებაში ინახავს თითოეული session-ის საუბრის ისტორიას, რათა AI-მ კონტექსტი იცოდეს. `games` mode-ში ისტორიაში JSON გარეშე ინახება მხოლოდ მომხმარებლის კითხვა — ტოკენების დაზოგვისთვის.
+
+### Endpoints
+
+| Method | Path | აღწერა |
+|---|---|---|
+| `GET` | `/ai/ask-stream` | SSE streaming — AI-ს პასუხი |
+| `DELETE` | `/ai/history/:sessionId` | session-ის ისტორიის წაშლა |
+
+### Environment Variables
+
+| ცვლადი | აღწერა |
+|---|---|
+| `GEMINI_API_KEY` | Google Gemini API გასაღები |
+| `GAMES_API_URL` | გარე სპორტული API-ს URL |
+| `CORS_ORIGIN` | დაშვებული origin(ები), მძიმით გამოყოფილი |
+| `PORT` | სერვერის პორტი (default: 3000) |
