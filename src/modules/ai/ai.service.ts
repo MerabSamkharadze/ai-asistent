@@ -42,8 +42,12 @@ export class AiService {
   ): Promise<void> {
     try {
       const finalPrompt = await this.buildPrompt(userInput, mode);
-      const history = mode === 'navigate' ? [] : (this.chatSessions.get(sessionId) ?? []);
-      const userMessage: Content = { role: 'user', parts: [{ text: finalPrompt }] };
+      const history =
+        mode === 'navigate' ? [] : (this.chatSessions.get(sessionId) ?? []);
+      const userMessage: Content = {
+        role: 'user',
+        parts: [{ text: finalPrompt }],
+      };
       const config = MODE_CONFIGS[mode];
 
       const streamGenerator = await this.ai.models.generateContentStream({
