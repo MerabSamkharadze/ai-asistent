@@ -16,9 +16,9 @@ export class AiController {
 
   @Sse('ask-stream')
   askAiStream(@Query() dto: AskAiDto): Observable<MessageEvent> {
-    return this.aiService.generateStreamResponse(dto.sessionId, dto.prompt).pipe(
-      map((chunk) => ({ data: chunk.data }) as MessageEvent),
-    );
+    return this.aiService
+      .generateStreamResponse(dto.sessionId, dto.prompt)
+      .pipe(map((chunk) => ({ data: chunk.data }) as MessageEvent));
   }
 
   @Delete('history/:sessionId')
