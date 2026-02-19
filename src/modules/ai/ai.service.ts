@@ -1,18 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI, Content, Part } from '@google/genai';
 import { Mode, MODE_CONFIGS } from './helper/mode-configs';
 import { GamesService } from '../games/games.service';
-import { Observable } from 'rxjs';
+import { Observable, Subscriber } from 'rxjs';
 
 @Injectable()
 export class AiService {
-  private ai: GoogleGenAI;
-  private chatSessions: Map<string, Content[]> = new Map();
+  private readonly logger = new Logger(AiService.name);
+  private readonly ai: GoogleGenAI;
+  private readonly chatSessions = new Map<string, Content[]>();
 
   constructor(
-    private configService: ConfigService,
-    private gamesService: GamesService,
+    private readonly configService: ConfigService,
+    private readonly gamesService: GamesService,
   ) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.ai = new GoogleGenAI({ apiKey });
@@ -24,76 +25,79 @@ export class AiService {
     mode: Mode = 'sports',
   ): Observable<{ data: string }> {
     return new Observable((subscriber) => {
-      void (async () => {
-        try {
-          const config = MODE_CONFIGS[mode];
-
-          let finalPrompt = userInput;
-
-          if (mode === 'games') {
-            const allGames = await this.gamesService.fetchGames();
-            const filtered = this.gamesService.filterByPrompt(allGames, userInput);
-            finalPrompt = `მონაცემები:\n${JSON.stringify(filtered)}\n\nკითხვა: ${userInput}`;
-          }
-
-          const currentHistory =
-            mode === 'navigate' ? [] : this.chatSessions.get(sessionId) || [];
-
-          // ისტორიაში ყოველთვის მხოლოდ userInput ვინახავთ (JSON გარეშე)
-          const messageForHistory = { role: 'user', parts: [{ text: userInput }] };
-          // Gemini-ზე კი finalPrompt გადის (games mode-ში JSON-ჩათვლით)
-          const newUserMessage = { role: 'user', parts: [{ text: finalPrompt }] };
-
-          const streamGenerator = await this.ai.models.generateContentStream({
-            model: 'gemini-2.5-flash-lite',
-            contents: [...currentHistory, newUserMessage],
-            config: {
-              tools: config.useGoogleSearch ? [{ googleSearch: {} }] : [],
-              systemInstruction: {
-                parts: [{ text: config.systemPrompt } as Part],
-              },
-              temperature: config.temperature,
-              maxOutputTokens: config.maxOutputTokens,
-              topP: config.topP,
-              topK: config.topK,
-              candidateCount: 1,
-            },
-          });
-
-          let fullReply = '';
-
-          for await (const chunk of streamGenerator) {
-            const chunkText = chunk.text;
-            if (chunkText) {
-              fullReply += chunkText;
-              subscriber.next({ data: chunkText });
-            }
-          }
-
-          if (mode !== 'navigate') {
-            const newModelMessage = {
-              role: 'model',
-              parts: [{ text: fullReply }],
-            };
-            this.chatSessions.set(sessionId, [
-              ...currentHistory,
-              messageForHistory,
-              newModelMessage,
-            ]);
-          }
-
-          subscriber.next({ data: '[DONE]' });
-          subscriber.complete();
-        } catch (error: unknown) {
-          console.error('Stream Error:', error);
-          subscriber.error(error);
-        }
-      })();
+      void this.stream(subscriber, sessionId, userInput, mode);
     });
   }
 
   clearHistory(sessionId: string) {
     this.chatSessions.delete(sessionId);
-    return { message: 'History cleared for session ' + sessionId };
+    return { message: `History cleared for session ${sessionId}` };
+  }
+
+  private async stream(
+    subscriber: Subscriber<{ data: string }>,
+    sessionId: string,
+    userInput: string,
+    mode: Mode,
+  ): Promise<void> {
+    try {
+      const finalPrompt = await this.buildPrompt(userInput, mode);
+      const history = mode === 'navigate' ? [] : (this.chatSessions.get(sessionId) ?? []);
+      const userMessage: Content = { role: 'user', parts: [{ text: finalPrompt }] };
+      const config = MODE_CONFIGS[mode];
+
+      const streamGenerator = await this.ai.models.generateContentStream({
+        model: 'gemini-2.5-flash-lite',
+        contents: [...history, userMessage],
+        config: {
+          tools: config.useGoogleSearch ? [{ googleSearch: {} }] : [],
+          systemInstruction: { parts: [{ text: config.systemPrompt } as Part] },
+          temperature: config.temperature,
+          maxOutputTokens: config.maxOutputTokens,
+          topP: config.topP,
+          topK: config.topK,
+          candidateCount: 1,
+        },
+      });
+
+      let fullReply = '';
+      for await (const chunk of streamGenerator) {
+        if (chunk.text) {
+          fullReply += chunk.text;
+          subscriber.next({ data: chunk.text });
+        }
+      }
+
+      if (mode !== 'navigate') {
+        this.saveToHistory(sessionId, history, userInput, fullReply);
+      }
+
+      subscriber.next({ data: '[DONE]' });
+      subscriber.complete();
+    } catch (error: unknown) {
+      this.logger.error('Stream error', error);
+      subscriber.error(error);
+    }
+  }
+
+  private async buildPrompt(userInput: string, mode: Mode): Promise<string> {
+    if (mode !== 'games') return userInput;
+
+    const allGames = await this.gamesService.fetchGames();
+    const filtered = this.gamesService.filterByPrompt(allGames, userInput);
+    return `მონაცემები:\n${JSON.stringify(filtered)}\n\nკითხვა: ${userInput}`;
+  }
+
+  private saveToHistory(
+    sessionId: string,
+    history: Content[],
+    userInput: string,
+    modelReply: string,
+  ): void {
+    this.chatSessions.set(sessionId, [
+      ...history,
+      { role: 'user', parts: [{ text: userInput }] },
+      { role: 'model', parts: [{ text: modelReply }] },
+    ]);
   }
 }

@@ -45,5 +45,3 @@ export const NAVIGATE_PROMPT = `
 {"type":"navigate","path":"/home"}
 `;
 
-// უკუთავსებადობისთვის
-export const SYSTEM_PROMPT = SPORTS_PROMPT;
