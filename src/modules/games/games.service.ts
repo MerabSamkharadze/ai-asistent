@@ -38,7 +38,9 @@ export class GamesService {
 
     const filtered = games.filter((game) => {
       const gameStr = JSON.stringify(game).toLowerCase();
-      return keywords.some((keyword) => keyword.length > 2 && gameStr.includes(keyword));
+      return keywords.some(
+        (keyword) => keyword.length > 2 && gameStr.includes(keyword),
+      );
     });
 
     // თუ ფილტრმა ვერაფერი იპოვა, პირველი 10 ჩანაწერი დავაბრუნოთ

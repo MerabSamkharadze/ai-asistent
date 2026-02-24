@@ -15,7 +15,7 @@ export const MODE_CONFIGS: Record<Mode, ModeConfig> = {
   sports: {
     systemPrompt: SPORTS_PROMPT,
     temperature: 0.2,
-    maxOutputTokens: 600,
+    maxOutputTokens: 300,
     topP: 0.85,
     topK: 25,
     useGoogleSearch: true,
@@ -23,7 +23,7 @@ export const MODE_CONFIGS: Record<Mode, ModeConfig> = {
   games: {
     systemPrompt: GAMES_PROMPT,
     temperature: 0.1,
-    maxOutputTokens: 400,
+    maxOutputTokens: 100,
     topP: 0.8,
     topK: 20,
     useGoogleSearch: false,
